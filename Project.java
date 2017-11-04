@@ -10,14 +10,12 @@ import java.awt.*;
 import java.awt.event.*;
 
 public class Project extends Application {
-    //Command command = new Command();
     public static void main(String[] args) {
         Frame f = new Frame();
         Application.launch();
     }
 
-    public void start(Stage primaryStage) {
-    }
+    public void start(Stage primaryStage) {}
 }
 
 class Frame extends JFrame implements ActionListener{
