@@ -14,6 +14,7 @@ import java.awt.event.MouseListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -75,10 +76,10 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     private JPanel controlPanel = new JPanel();
     private JPanel listPanel = new JPanel();
     private JPanel centerPanel = new JPanel();
+    private JPanel timePanel = new JPanel();
 
     private JMenu fileMenu = new JMenu("File(F)");
     private JMenu editMenu = new JMenu("Edit(E)");
-    private JMenu helpMenu = new JMenu("Help(H)");
 
     private JMenuItem open = new JMenuItem("Open(O)");
 
@@ -86,7 +87,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
 
     private JScrollPane listScrollPane = new JScrollPane(list);
 
-    private JSlider timeSlider = new JSlider();
+    private JSlider timeSlider = new JSlider(0, 0, 0);
 
     private JRoundButton playButton = new JRoundButton("play");
     private JRoundButton nextButton = new JRoundButton("nextMusic");
@@ -94,18 +95,23 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     private JRoundButton shuffleButton = new JRoundButton("shuffle");
     private JRoundButton repeatButton = new JRoundButton("repeat");
 
-    private ImageIcon jisooIcon = new ImageIcon();
-    private ImageIcon keiIcon = new ImageIcon();
     private ImageIcon playIcon = new ImageIcon();
-    private ImageIcon smallJisooIcon = new ImageIcon();
-    private ImageIcon smallKeiIcon = new ImageIcon();
+    private ImageIcon pauseIcon = new ImageIcon();
+    private ImageIcon previousIcon = new ImageIcon();
+    private ImageIcon nextIcon = new ImageIcon();
+    private ImageIcon noRepeatIcon = new ImageIcon();
+    private ImageIcon repeatIcon = new ImageIcon();
+    private ImageIcon repeatOneIcon = new ImageIcon();
+    private ImageIcon noShuffleIcon = new ImageIcon();
+    private ImageIcon shuffleIcon = new ImageIcon();
     private ImageIcon albumIcon = new ImageIcon();
 
     private JLabel albumArt = new JLabel();
     private JLabel album = new JLabel();
     private JLabel artist = new JLabel();
     private JLabel title = new JLabel();
-    private JLabel playTime = new JLabel();
+    private JLabel playDuration = new JLabel("0:00");
+    private JLabel totalDuration = new JLabel("0:00");
 
     private Media media = null;
 
@@ -116,7 +122,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     private Timer timer = new Timer();
 
     private Duration duration;
-    private Duration currentTime;
+    private Duration currentDuration;
     private Duration timeSliderValue;
 
     private File folder = null;
@@ -127,6 +133,12 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     private ArrayList<String> musicList = new ArrayList<String>();
     
     private Vector<Integer> previousList = new Vector<Integer>(1);
+
+    String filter[] = {"mp3", "wav", "m4a"};
+    String extension;
+
+    private long seconds;
+    private long minutes;
 
     private int currentPlay = 0;
     private int oldCurrentPlay = 0;
@@ -143,9 +155,11 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         previousButton.setSize(50, 50);
         albumArt.setSize(250, 250);
 
-        timeSlider.setPreferredSize(new Dimension(250, 50));
+        timeSlider.setPreferredSize(new Dimension(200, 50));
 
         timeSlider.setValue(0);
+
+        listScrollPane.setBorder(null);
 
         albumArt.setHorizontalAlignment(JLabel.CENTER);
 
@@ -153,17 +167,22 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         fileMenu.setMnemonic(KeyEvent.VK_F);
         editMenu.setMnemonic(KeyEvent.VK_E);
 
-        jisooIcon = autoResizePicture(new File("./asset/play.png"), playButton.getWidth(), playButton.getHeight());
-        keiIcon = autoResizePicture(new File("./asset/kei.png"), playButton.getWidth(), playButton.getHeight());
-        smallJisooIcon = autoResizePicture(new File("./asset/jisoo.png"), nextButton.getWidth(), nextButton.getHeight());
-        smallKeiIcon = autoResizePicture(new File("./asset/kei.png"), nextButton.getWidth(), nextButton.getHeight());
+        playIcon = autoResizePicture(new File("./asset/jisooPlay.png"), playButton.getWidth(), playButton.getHeight());
+        pauseIcon = autoResizePicture(new File("./asset/keiPause.png"), playButton.getWidth(), playButton.getHeight());
+        previousIcon = autoResizePicture(new File("./asset/yeinPrev.png"), previousButton.getWidth(), previousButton.getHeight());
+        nextIcon = autoResizePicture(new File("./asset/babysoulNext.png"), nextButton.getWidth(), nextButton.getHeight());
+        noRepeatIcon = autoResizePicture(new File("./asset/jinNoRepeat.png"), nextButton.getWidth(), nextButton.getHeight());
+        repeatIcon = autoResizePicture(new File("./asset/jinRepeat.png"), nextButton.getWidth(), nextButton.getHeight());
+        repeatOneIcon = autoResizePicture(new File("./asset/jinRepeatOne.png"), nextButton.getWidth(), nextButton.getHeight());
+        noShuffleIcon = autoResizePicture(new File("./asset/mijooNoShuffle.png"), nextButton.getWidth(), nextButton.getHeight());
+        shuffleIcon = autoResizePicture(new File("./asset/mijooShuffle.png"), nextButton.getWidth(), nextButton.getHeight());
         albumIcon = autoResizePicture(new File("./asset/default.jpg"), albumArt.getWidth(), albumArt.getHeight());
 
-        playButton.setIcon(jisooIcon);
-        nextButton.setIcon(smallJisooIcon);
-        previousButton.setIcon(smallKeiIcon);
-        shuffleButton.setIcon(smallJisooIcon);
-        repeatButton.setIcon(smallKeiIcon);
+        playButton.setIcon(playIcon);
+        nextButton.setIcon(nextIcon);
+        previousButton.setIcon(previousIcon);
+        shuffleButton.setIcon(noShuffleIcon);
+        repeatButton.setIcon(noRepeatIcon);
         albumArt.setIcon(albumIcon);
 
         playButton.addActionListener(this);
@@ -176,10 +195,18 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         albumInfoPanel.setLayout(new FlowLayout());
         controlPanel.setLayout(new FlowLayout());
         listPanel.setLayout(new GridLayout(1, 1));
+        timePanel.setLayout(new FlowLayout());
+
+        albumInfoPanel.setBackground(new Color(100, 100, 100));
+        centerPanel.setBackground(new Color(100, 100, 100));
+        controlPanel.setBackground(new Color(100, 100, 100));
+        timePanel.setBackground(new Color(100, 100, 100));
+        listPanel.setBackground(new Color(100, 100, 100));
+        list.setBackground(new Color(100, 100, 100));
 
         setJMenuBar(menuBar);
 
-        listPanel.setBorder(new TitledBorder("목록"));
+        listPanel.setBorder(new TitledBorder("List"));
 
         menuBar.add(fileMenu);
         menuBar.add(editMenu);
@@ -193,9 +220,12 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         albumInfoPanel.add(title);
         albumInfoPanel.add(album);
 
+        timePanel.add(playDuration);
+        timePanel.add(timeSlider);
+        timePanel.add(totalDuration);
         centerPanel.add(albumArt, BorderLayout.NORTH);
         centerPanel.add(controlPanel, BorderLayout.CENTER);
-        centerPanel.add(timeSlider, BorderLayout.SOUTH);
+        centerPanel.add(timePanel, BorderLayout.SOUTH);
         
         controlPanel.add(shuffleButton);
         controlPanel.add(previousButton);
@@ -218,6 +248,9 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         timeSlider.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent mouseEvent) {
+                if(timeSlider.getMaximum() == 0)    {
+                    return;
+                }
                 timeSliderValue = new Duration(timeSlider.getValue());
                 player.seek(timeSliderValue);
             }
@@ -226,6 +259,9 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         timeSlider.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent mouseEvent) {
+                if(timeSlider.getMaximum() == 0)    {
+                    return;
+                }
                 timeSliderValue = new Duration(timeSlider.getValue());
                 player.seek(timeSliderValue);
             }
@@ -236,6 +272,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
             public void run()   {
                 if(duration != null && !duration.equals(Duration.ZERO))   {
                     updateSlider();
+                    setTime();
                 }
             }
         }, 0, 200);
@@ -251,9 +288,9 @@ class GUI extends JFrame implements ActionListener, Runnable  {
             return;
         }
         try {
-            currentTime = player.getCurrentTime();
+            currentDuration = player.getCurrentTime();
             if (duration.greaterThan(Duration.ZERO)) {
-                timeSlider.setValue((int)(currentTime.toMillis()));
+                timeSlider.setValue((int)(currentDuration.toMillis()));
             }
         } catch(Exception e)    {
             e.printStackTrace();
@@ -273,23 +310,42 @@ class GUI extends JFrame implements ActionListener, Runnable  {
                                         pauseMusic();
                                     }
                                     break;
-                                    
-            case "previousMusic" :  currentPlay = (isShuffling)? previousList.remove(previousList.size() - 1): setCurrentPlay();
-                                    if(currentPlay >= 0 && currentPlay < musicFileList.size())   {
-                                        playMusic(musicFileList.get(currentPlay));
-                                    } 
-                                    break;
 
-            case "nextMusic"    :   currentPlay = setCurrentPlay();
-                                    if(currentPlay >= 0 && currentPlay < musicFileList.size())   {
+            case "previousMusic" :  setCurrentPlay(true);
+                                    if(currentPlay >= 0 & currentPlay < musicList.size())   {
                                         playMusic(musicFileList.get(currentPlay));
                                     }
                                     break;
 
-            case "shuffle"      :   isShuffling = (isShuffling)? false: true;
+            case "nextMusic"    :   setCurrentPlay(false);
+                                    if(currentPlay >= 0 && currentPlay < musicList.size())   {
+                                        playMusic(musicFileList.get(currentPlay));
+                                    }
                                     break;
 
-            case "repeat"       :   isRepeating = (isRepeating < 2)? ++isRepeating: 0;
+            case "shuffle"      :   if(isShuffling) {
+                                        isShuffling = false;
+                                        shuffleButton.setIcon(noShuffleIcon);
+                                    }
+                                    else    {
+                                        isShuffling = true;
+                                        shuffleButton.setIcon(shuffleIcon);
+                                    }
+                                    break;
+
+            case "repeat"       :   if(isRepeating == 0) {
+                                        isRepeating = 1;
+                                        repeatButton.setIcon(repeatIcon);
+                                    }
+                                    else if(isRepeating == 1)    {
+                                        isRepeating = 2;
+                                        repeatButton.setIcon(repeatOneIcon);
+                                    }
+                                    else    {
+                                        isRepeating = 0;
+                                        repeatButton.setIcon(noRepeatIcon);
+                                    }
+                                    shuffleButton.setIcon(noShuffleIcon);
                                     isShuffling = false;
                                     break;
 
@@ -297,12 +353,11 @@ class GUI extends JFrame implements ActionListener, Runnable  {
 
         	                        dirChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
-                                    if(dirChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION)	{
-                                    	folder = dirChooser.getSelectedFile();
-                                    }
-                                    else    {
+                                    if(dirChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION)	{
                                         return;
                                     }
+
+                                    folder = dirChooser.getSelectedFile();
                                 
                                     musicList.clear();
                                     musicFileList.clear();
@@ -332,11 +387,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
             previousList.remove(0);
         }
 
-        if(oldCurrentPlay != currentPlay || isRepeating == 2)   {
-            previousList.addElement(oldCurrentPlay);
-        }
-
-        playButton.setIcon(keiIcon);
+        playButton.setIcon(pauseIcon);
         player.play();
 
         player.setOnReady(new Runnable() {   
@@ -346,20 +397,28 @@ class GUI extends JFrame implements ActionListener, Runnable  {
                 artist.setText(media.getMetadata().get("artist").toString());
                 album.setText(media.getMetadata().get("album").toString());
                 albumIcon = autoResizePicture(SwingFXUtils.fromFXImage((javafx.scene.image.Image)media.getMetadata().get("image"), null), albumArt.getWidth(), albumArt.getHeight());
+                if(albumIcon == null)   {
+                    albumIcon = autoResizePicture(new File("./asset/default.jpg"), albumArt.getWidth(), albumArt.getHeight());
+                }
                 albumArt.setIcon(albumIcon);
                 duration = media.getDuration();
                 timeSlider.setMaximum((int)(duration.toMillis()));
+                seconds = (long)Math.floor(duration.toSeconds());
+                minutes = (long)Math.floor(seconds / 60.0);
+                seconds %= 60;
+                totalDuration.setText(String.format("%02d:%02d", minutes, seconds));
             }
         });
 
         player.setOnEndOfMedia(new Runnable()   {
             @Override
             public void run()   {
-                setCurrentPlay();
+                setCurrentPlay(false);
                 stopMusic();
                 timeSlider.setValue(0);
+                timeSlider.setMaximum(0);
                 duration = Duration.ZERO;
-                if(currentPlay >= 0 & currentPlay < musicFileList.size())   {
+                if(currentPlay >= 0 & currentPlay < musicList.size())   {
                     playMusic(musicFileList.get(currentPlay));
                 }
             }
@@ -370,7 +429,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     }
 
     private void stopMusic()    {
-        playButton.setIcon(jisooIcon);
+        playButton.setIcon(playIcon);
 
         player.stop();
 
@@ -379,7 +438,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     }
 
     private void pauseMusic()   {
-        playButton.setIcon(jisooIcon);
+        playButton.setIcon(playIcon);
 
         player.pause();
 
@@ -387,42 +446,80 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     }
 
     private void resumeMusic()  {
-        playButton.setIcon(keiIcon);
+        playButton.setIcon(pauseIcon);
 
         player.play();
 
         isPausing = false;
     }
 
-    private int setCurrentPlay()    {
-        oldCurrentPlay = currentPlay;
-        if(isShuffling)    {
-            do{
-                randomPlay = randomMusicIndex();
-            } while(randomPlay == currentPlay);
-            currentPlay = randomPlay;
-        }
-        else if(isRepeating == 1)    {
-            /*if(currentPlay + 1 >= musicFileList.size()) {
-                currentPlay = 0;
+    private void setCurrentPlay(boolean previousFlag)    {
+        boolean flag = false;
+        
+        if(previousFlag)    {
+            if(currentPlay < 0) {
+                return;
             }
-            else    {
-                ++currentPlay;
-            }*/
 
-            currentPlay = (currentPlay + 1 >= musicFileList.size())? 0: ++currentPlay;
+            if(isShuffling)    {
+                if(previousList.isEmpty())    {
+                    do{
+                        randomPlay = randomMusicIndex();
+                    } while(randomPlay == currentPlay);
+                    currentPlay = randomPlay;
+                }
+                else    {
+                    currentPlay = previousList.remove(previousList.size() - 1);
+                }
+                flag = true;
+            }
+            else if(isRepeating == 1)    {
+                currentPlay = (currentPlay - 1 < 0)? musicList.size() - 1: --currentPlay;
+            }
+            else if(isRepeating == 2)   {
+                flag = true;
+            }
+            else    {
+                --currentPlay;
+            }
         }
-        else if(isRepeating == 2)   {}
         else    {
-            /*if(currentPlay + 1 >= musicFileList.size()) {
-                currentPlay = -1;
+            if(currentPlay >= musicList.size()) {
+                return;
+            }
+            
+            if(isShuffling)    {
+                do{
+                    randomPlay = randomMusicIndex();
+                } while(randomPlay == currentPlay);
+                currentPlay = randomPlay;
+            }
+            else if(isRepeating == 1)    {
+                currentPlay = (currentPlay + 1 >= musicList.size())? 0: ++currentPlay;
+            }
+            else if(isRepeating == 2)   {
+                flag = true;
             }
             else    {
                 ++currentPlay;
-            }*/
-            currentPlay = (currentPlay + 1 >= musicFileList.size())? -1: ++currentPlay;
+            }
         }
-        return currentPlay;
+
+        oldCurrentPlay = currentPlay;
+
+        if(!flag)   {
+            previousList.addElement(oldCurrentPlay);
+        }
+        list.setSelectedIndex(currentPlay);
+    }
+
+    private void setTime()  {
+
+        seconds = (long)Math.floor(currentDuration.toSeconds());
+        minutes = (long)Math.floor(seconds / 60.0);
+        seconds %= 60;
+
+        playDuration.setText(String.format("%02d:%02d", minutes, seconds));
     }
 
     private ImageIcon autoResizePicture(BufferedImage image, int width, int height)  {
@@ -467,8 +564,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     }
 
     private boolean filterFileExtension(String fileName)    {
-        String filter[] = {"mp3", "wav", "m4a"};
-        String extension = fileName.substring(fileName.lastIndexOf(".") + 1);
+        extension = fileName.substring(fileName.lastIndexOf(".") + 1);
 
         for(String filtering : filter)  {
             if(extension.equals(filtering)) {
