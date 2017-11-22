@@ -30,6 +30,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.border.TitledBorder;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.ImageIcon;
@@ -161,7 +162,10 @@ class GUI extends JFrame implements ActionListener, Runnable  {
 
         listScrollPane.setBorder(null);
 
-        albumArt.setHorizontalAlignment(JLabel.CENTER);
+        albumArt.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+        artist.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+        album.setAlignmentX(JLabel.CENTER_ALIGNMENT);
+        title.setAlignmentX(JLabel.CENTER_ALIGNMENT);
 
         fileMenu.setMnemonic(KeyEvent.VK_SPACE);
         fileMenu.setMnemonic(KeyEvent.VK_F);
@@ -192,7 +196,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         repeatButton.addActionListener(this);
         open.addActionListener(this);
 
-        albumInfoPanel.setLayout(new FlowLayout());
+        albumInfoPanel.setLayout(new BoxLayout(albumInfoPanel, BoxLayout.Y_AXIS));
         controlPanel.setLayout(new FlowLayout());
         listPanel.setLayout(new GridLayout(1, 1));
         timePanel.setLayout(new FlowLayout());
@@ -203,6 +207,12 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         timePanel.setBackground(new Color(100, 100, 100));
         listPanel.setBackground(new Color(100, 100, 100));
         list.setBackground(new Color(100, 100, 100));
+
+        artist.setForeground(Color.WHITE);
+        title.setForeground(Color.WHITE);
+        album.setForeground(Color.WHITE);
+        playDuration.setForeground(Color.WHITE);
+        totalDuration.setForeground(Color.WHITE);
 
         setJMenuBar(menuBar);
 
@@ -216,6 +226,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         mainPanel.add(centerPanel, BorderLayout.CENTER);
         mainPanel.add(listPanel, BorderLayout.SOUTH);
 
+        albumInfoPanel.add(albumArt);
         albumInfoPanel.add(artist);
         albumInfoPanel.add(title);
         albumInfoPanel.add(album);
@@ -223,7 +234,6 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         timePanel.add(playDuration);
         timePanel.add(timeSlider);
         timePanel.add(totalDuration);
-        centerPanel.add(albumArt, BorderLayout.NORTH);
         centerPanel.add(controlPanel, BorderLayout.CENTER);
         centerPanel.add(timePanel, BorderLayout.SOUTH);
         
@@ -270,7 +280,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         timer.schedule(new TimerTask()  {
             @Override
             public void run()   {
-                if(duration != null && !duration.equals(Duration.ZERO))   {
+                if(duration != null)   {
                     updateSlider();
                     setTime();
                 }
@@ -393,9 +403,9 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         player.setOnReady(new Runnable() {   
             @Override
             public void run() {
-                title.setText(media.getMetadata().get("title").toString());
-                artist.setText(media.getMetadata().get("artist").toString());
-                album.setText(media.getMetadata().get("album").toString());
+                title.setText('"' + media.getMetadata().get("title").toString() + '"');
+                artist.setText('"' + media.getMetadata().get("artist").toString() + '"');
+                album.setText('"' + media.getMetadata().get("album").toString() + '"');
                 albumIcon = autoResizePicture(SwingFXUtils.fromFXImage((javafx.scene.image.Image)media.getMetadata().get("image"), null), albumArt.getWidth(), albumArt.getHeight());
                 if(albumIcon == null)   {
                     albumIcon = autoResizePicture(new File("./asset/default.jpg"), albumArt.getWidth(), albumArt.getHeight());
@@ -418,6 +428,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
                 timeSlider.setValue(0);
                 timeSlider.setMaximum(0);
                 duration = Duration.ZERO;
+                currentDuration = Duration.ZERO;
                 if(currentPlay >= 0 & currentPlay < musicList.size())   {
                     playMusic(musicFileList.get(currentPlay));
                 }
@@ -487,7 +498,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
             if(currentPlay >= musicList.size()) {
                 return;
             }
-            
+
             if(isShuffling)    {
                 do{
                     randomPlay = randomMusicIndex();
