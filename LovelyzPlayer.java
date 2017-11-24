@@ -1,16 +1,13 @@
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.Observable;
 import java.util.Vector;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.BorderLayout;
@@ -22,17 +19,12 @@ import java.awt.geom.Point2D;
 import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
-import java.awt.Rectangle;
 
 import javax.imageio.ImageIO;
 
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import javax.swing.border.TitledBorder;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -45,12 +37,8 @@ import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
-import javax.swing.SwingUtilities;
-
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.collections.ObservableMap;
-import javafx.collections.MapChangeListener;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
@@ -114,11 +102,11 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     private JLabel playDuration = new JLabel("0:00");
     private JLabel totalDuration = new JLabel("0:00");
 
+    private ObservableMap<String,Object> metadata;
+
     private Media media = null;
 
     private static MediaPlayer player = null;
-
-    private ObservableMap<String,Object> metadata;
 
     private Timer timer = new Timer();
 
@@ -134,10 +122,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     private ArrayList<String> musicList = new ArrayList<String>();
     
     private Vector<Integer> previousList = new Vector<Integer>(1);
-
-    String filter[] = {"mp3", "wav", "m4a"};
-    String extension;
-
+    
     private long seconds;
     private long minutes;
 
@@ -207,6 +192,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         timePanel.setBackground(new Color(100, 100, 100));
         listPanel.setBackground(new Color(100, 100, 100));
         list.setBackground(new Color(100, 100, 100));
+        timeSlider.setBackground(new Color(100, 100, 100));
 
         artist.setForeground(Color.WHITE);
         title.setForeground(Color.WHITE);
@@ -288,7 +274,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         }, 0, 200);
 
         this.setTitle("Lovelyz Player");
-        this.setSize(300, 650);
+        this.setSize(320, 700);
         this.setVisible(true);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
@@ -341,6 +327,8 @@ class GUI extends JFrame implements ActionListener, Runnable  {
                                         isShuffling = true;
                                         shuffleButton.setIcon(shuffleIcon);
                                     }
+                                    isRepeating = 0;
+                                    repeatButton.setIcon(noRepeatIcon);
                                     break;
 
             case "repeat"       :   if(isRepeating == 0) {
@@ -388,27 +376,42 @@ class GUI extends JFrame implements ActionListener, Runnable  {
         if(player != null)  {
             stopMusic();
         }
-
+        
         media = new Media(music.toURI().toString());
         player = new MediaPlayer(media);
-        metadata = media.getMetadata();
 
         if(previousList.size() == 10)   {
             previousList.remove(0);
         }
 
-        playButton.setIcon(pauseIcon);
-        player.play();
-
         player.setOnReady(new Runnable() {   
             @Override
             public void run() {
-                title.setText('"' + media.getMetadata().get("title").toString() + '"');
-                artist.setText('"' + media.getMetadata().get("artist").toString() + '"');
-                album.setText('"' + media.getMetadata().get("album").toString() + '"');
-                albumIcon = autoResizePicture(SwingFXUtils.fromFXImage((javafx.scene.image.Image)media.getMetadata().get("image"), null), albumArt.getWidth(), albumArt.getHeight());
-                if(albumIcon == null)   {
+            	metadata = media.getMetadata();
+            	
+                if(metadata.get("title") == null)    {
+                    title.setText("");
+                }
+                else    {
+                    title.setText(metadata.get("title").toString());
+                }
+                if(metadata.get("artist") == null)    {
+                    artist.setText("");
+                }
+                else    {
+                    artist.setText(metadata.get("artist").toString());
+                }
+                if(metadata.get("album") == null)    {
+                    album.setText("");
+                }
+                else    {
+                    album.setText(metadata.get("album").toString());
+                }
+                if(metadata.get("image") == null)   {
                     albumIcon = autoResizePicture(new File("./asset/default.jpg"), albumArt.getWidth(), albumArt.getHeight());
+                }
+                else    {
+                    albumIcon = autoResizePicture(SwingFXUtils.fromFXImage((javafx.scene.image.Image)metadata.get("image"), null), albumArt.getWidth(), albumArt.getHeight());
                 }
                 albumArt.setIcon(albumIcon);
                 duration = media.getDuration();
@@ -420,6 +423,9 @@ class GUI extends JFrame implements ActionListener, Runnable  {
             }
         });
 
+        playButton.setIcon(pauseIcon);
+        player.play();
+
         player.setOnEndOfMedia(new Runnable()   {
             @Override
             public void run()   {
@@ -429,6 +435,7 @@ class GUI extends JFrame implements ActionListener, Runnable  {
                 timeSlider.setMaximum(0);
                 duration = Duration.ZERO;
                 currentDuration = Duration.ZERO;
+                totalDuration.setText("00:00");
                 if(currentPlay >= 0 & currentPlay < musicList.size())   {
                     playMusic(musicFileList.get(currentPlay));
                 }
@@ -525,7 +532,6 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     }
 
     private void setTime()  {
-
         seconds = (long)Math.floor(currentDuration.toSeconds());
         minutes = (long)Math.floor(seconds / 60.0);
         seconds %= 60;
@@ -575,7 +581,8 @@ class GUI extends JFrame implements ActionListener, Runnable  {
     }
 
     private boolean filterFileExtension(String fileName)    {
-        extension = fileName.substring(fileName.lastIndexOf(".") + 1);
+        String filter[] = {"mp3", "wav", "m4a"};
+        String extension = fileName.substring(fileName.lastIndexOf(".") + 1);
 
         for(String filtering : filter)  {
             if(extension.equals(filtering)) {
