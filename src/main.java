@@ -45,7 +45,7 @@ import javafx.scene.media.MediaPlayer;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-public class LovelyzPlayer extends Application {
+public class main extends Application {
     
     public static void main(String[] args) {
         new GUI();
