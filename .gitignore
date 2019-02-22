@@ -1,11 +1,13 @@
-# General
-.DS_Store
+
+# Created by https://www.gitignore.io/api/macos
+
+### macOS ###
+*.DS_Store
 .AppleDouble
 .LSOverride
 
 # Icon must end with two \r
 Icon
-
 
 # Thumbnails
 ._*
@@ -26,8 +28,10 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-.vscode
+# End of https://www.gitignore.io/api/macos
 
+# Custom
+.vscode
 *.mp3
 *.m4a
 *.wav
